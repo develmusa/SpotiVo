@@ -151,23 +151,26 @@ router.get('/dashboard', function(req, res, next) {
 
 
 router.post('/test', function(req,res){
-  var requestPlaylist = req.body.id;
+  var requestPlaylistId = req.body.id;
   console.log(req.body);
-  router.get('/dashboard', function(req, res, next) {
-    spotifyApi.getPlaylist(userId, requestPlaylist)
-        .then(function(data) {
-          var response = (data.body);
-          console.log('Retrieved playlists', data.body);
-          //Response müssti in Databank gspeicheret werde und vo dere denn grenderet werde
-          res.render('dashboard', {  data: response });
-        },function(err) {
-          console.log('Something went wrong!', err);
-        });
-
-
-  });
+  res.redirect('/playlist?id=' + requestPlaylistId);
 });
 
+router.get('/playlist', function(req, res, next) {
+  var requestPlaylistId = req.query.id;
+  console.log('request playlsitID', requestPlaylistId);
+
+  spotifyApi.getPlaylist(userId, requestPlaylistId)
+      .then(function (data) {
+        var response = (data.body.tracks.items);
+        console.log('Retrieved playlists', data.body.tracks.items);
+        //Für db: name->data.body.tracks.items.track.name artist->data.body.tracks.items.track.artists.name(artists isch es array vo alli aristse vo dem song beinhaltet)
+
+        res.render('dashboardSongs', {  data: response });
+      }, function (err) {
+        console.log('Something went wrong!', err);
+      });
+});
 
 
 
