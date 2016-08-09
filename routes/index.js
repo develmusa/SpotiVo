@@ -16,10 +16,6 @@ var spotifyApi = new SpotifyWebApi({
   redirectUri : 'http://localhost:8888/callback '
 });
 
-//Temp Username save  muess nah gänderet werde
-var userId;
-
-
 /**
  * Generates a random string containing numbers and letters
  * @param  {number} length The length of the string
@@ -99,8 +95,12 @@ router.get('/callback', function(req, res) {
         spotifyApi.setAccessToken(access_token);
         spotifyApi.setRefreshToken(refresh_token);
 
-        console.log(access_token);
+        //save access token & refresh token to session
+        req.session.accessToken = access_token;
+        req.session.refreshToken = refresh_token;
+        req.session.userId = "custom_undefined";
 
+        console.log(access_token);
 
         var options = {
           url: 'https://api.spotify.com/v1/me',
@@ -110,13 +110,16 @@ router.get('/callback', function(req, res) {
 
         // use the access token to access the Spotify Web API
         request.get(options, function(error, response, body) {
-          console.log(body);
-          userId = body.id;
+          //console.log(body)
+          req.app.locals.db.login(body.id);
+          req.session.userId = body.id;
+
+          //redirect after getting userId
+          res.redirect('/dashboard');
         });
 
         // we can also pass the token to the browser to make requests from there
-
-        res.redirect('/dashboard');
+        //res.redirect('/dashboard'); hani nach obe verschobe damit t user id zerst abgfrögt wird bevor witergleitet wird.
 
        /* res.redirect('/playlists' +
             querystring.stringify({
@@ -136,17 +139,18 @@ router.get('/callback', function(req, res) {
 
 /* GET dashboard. */
 router.get('/dashboard', function(req, res, next) {
-  spotifyApi.getUserPlaylists(userId)
+  console.log("Session: user Id ", req.session.userId);
+  spotifyApi.getUserPlaylists(req.session.userId)
       .then(function(data) {
         var response = (data.body.items);
-        console.log('Retrieved playlists', data.body);
-        //Response müssti in Databank gspeicheret werde und vo dere denn grenderet werde
+        //console.log('Retrieved playlists', data.body);
+        //TODO: Response müssti in Databank gspeicheret werde und vo dere denn grenderet werde
+        //TODO: bestätigung das mer au würklich es voting wil erstele
+        //TODO: Text vom button ändere das es bi Playliste wo scho existiered (funktion doesPlaylistExist() nur show staat)
         res.render('dashboard', {  data: response });
       },function(err) {
         console.log('Something went wrong!', err);
       });
-
-
 });
 
 
@@ -158,12 +162,17 @@ router.post('/test', function(req,res){
 
 router.get('/playlist', function(req, res, next) {
   var requestPlaylistId = req.query.id;
-  console.log('request playlsitID', requestPlaylistId);
-
-  spotifyApi.getPlaylist(userId, requestPlaylistId)
+  //create Playlist if not already exists
+  req.app.locals.db.doesPlaylistExist(requestPlaylistId, function(err, playlistExists) {
+    if (!playlistExists) {
+      req.app.locals.db.createPlaylist(spotifyApi, requestPlaylistId, req.session.userId);
+    }
+  });
+  //console.log('session userId: ', req.session.userId);
+  spotifyApi.getPlaylist(req.session.userId, requestPlaylistId)
       .then(function (data) {
         var response = (data.body.tracks.items);
-        console.log('Retrieved playlists', data.body.tracks.items);
+        //console.log('Retrieved playlists', response);
         //Für db: name->data.body.tracks.items.track.name artist->data.body.tracks.items.track.artists.name(artists isch es array vo alli aristse vo dem song beinhaltet)
 
         res.render('dashboardSongs', {  data: response });
