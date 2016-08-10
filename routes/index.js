@@ -162,15 +162,19 @@ router.post('/test', function(req,res){
 
 router.get('/playlist', function(req, res, next) {
   var requestPlaylistId = req.query.id;
-  //create Playlist if not already exists
-  req.app.locals.db.doesPlaylistExist(requestPlaylistId, function(err, playlistExists) {
-    if (!playlistExists) {
-      req.app.locals.db.createPlaylist(spotifyApi, requestPlaylistId, req.session.userId);
-    }
-  });
   //console.log('session userId: ', req.session.userId);
   spotifyApi.getPlaylist(req.session.userId, requestPlaylistId)
       .then(function (data) {
+
+        //create Playlist if not already exists
+        req.app.locals.db.doesPlaylistExist(requestPlaylistId, function(err, playlistExists) {
+          if (!playlistExists) {
+            req.app.locals.db.createPlaylist(spotifyApi, requestPlaylistId, data.body.name, req.session.userId);
+          } else {
+            req.app.locals.db.createVote(requestPlaylistId, data.body.tracks.items[1].track.id, 0);
+          }
+        });
+
         var response = (data.body.tracks.items);
         //console.log('Retrieved playlists', response);
         //Für db: name->data.body.tracks.items.track.name artist->data.body.tracks.items.track.artists.name(artists isch es array vo alli aristse vo dem song beinhaltet)

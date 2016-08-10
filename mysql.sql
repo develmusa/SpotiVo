@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Generation Time: Aug 10, 2016 at 09:42 AM
+-- Generation Time: Aug 10, 2016 at 09:27 PM
 -- Server version: 5.7.13-0ubuntu0.16.04.2
 -- PHP Version: 7.0.8-0ubuntu0.16.04.2
 
@@ -40,8 +40,7 @@ CREATE TABLE `playlist` (
 --
 
 INSERT INTO `playlist` (`id`, `spotify_id`, `name`) VALUES
-(1, '0ycjsbjiy26VoAKoSEgioD', 'temporary_null'),
-(3, '6eJdb9MIm11K7HuGFJhyXQ', 'temporary_null');
+(21, '0ycjsbjiy26VoAKoSEgioD', 'Powerslide');
 
 -- --------------------------------------------------------
 
@@ -61,8 +60,7 @@ CREATE TABLE `playlist_members` (
 --
 
 INSERT INTO `playlist_members` (`id`, `fs_user`, `fs_playlist`) VALUES
-(1, 1, 1),
-(3, 1, 3);
+(19, 1, 21);
 
 -- --------------------------------------------------------
 
@@ -74,10 +72,12 @@ DROP TABLE IF EXISTS `playlist_tracks`;
 CREATE TABLE `playlist_tracks` (
   `id` int(8) NOT NULL,
   `fs_playlist` int(8) NOT NULL,
-  `spotify_id` varchar(30) COLLATE latin1_german2_ci NOT NULL,
-  `name` varchar(50) COLLATE latin1_german2_ci NOT NULL,
-  `artist` varchar(50) COLLATE latin1_german2_ci NOT NULL,
-  `album` varchar(50) COLLATE latin1_german2_ci NOT NULL,
+  `spotify_id` varchar(50) COLLATE latin1_german2_ci NOT NULL,
+  `name` varchar(100) COLLATE latin1_german2_ci NOT NULL,
+  `artist` varchar(100) COLLATE latin1_german2_ci NOT NULL,
+  `album` varchar(100) COLLATE latin1_german2_ci NOT NULL,
+  `added_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `added_by` text COLLATE latin1_german2_ci NOT NULL COMMENT 'spotify_id of user',
   `deleted` int(1) NOT NULL COMMENT '1 or 0',
   `liked` int(1) NOT NULL COMMENT '1 or 0'
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_german2_ci;
@@ -86,55 +86,34 @@ CREATE TABLE `playlist_tracks` (
 -- Dumping data for table `playlist_tracks`
 --
 
-INSERT INTO `playlist_tracks` (`id`, `fs_playlist`, `spotify_id`, `name`, `artist`, `album`, `deleted`, `liked`) VALUES
-(1, 1, '0sfQoW3g1Nzgi5KzYwRiPQ', 'Powerslide', 'Basement Saints', '[object Object]', 0, 0),
-(2, 1, '47z1UWrhWORC9tFa1aQ8kd', 'Black Grease', 'Black Angels', '[object Object]', 0, 0),
-(3, 1, '4R3i6bPqzQrOQGUmZNCgOe', 'Half Full Glass Of Wine', 'Tame Impala', '[object Object]', 0, 0),
-(4, 1, '79s4MhMtQe6os40Yti6mUj', 'Golden Town', 'Brutus', '[object Object]', 0, 0),
-(5, 1, '6Soku1wiB6mfcQp2s2W6a6', '20th Century Boy', 'T. Rex', '[object Object]', 0, 0),
-(6, 1, '1CW1CIucafZQqlqMHvCAZa', 'What\'s in My Head?', 'Fuzz', '[object Object]', 0, 0),
-(7, 1, '6JhVeeiFVbHFZbg3R8QKRI', 'Carrion Crawler', 'Thee Oh Sees', '[object Object]', 0, 0),
-(8, 1, '5KUe1E1TpL3U3f1BBiSFJe', 'Free Souls', 'Basement Saints', '[object Object]', 0, 0),
-(9, 1, '0w3DZcTOHrCEpAwn9nM5A9', 'Better Call Saul Main Title Theme (Extended)', 'Little Barrie', '[object Object]', 0, 0),
-(10, 1, '0kpUik8UD6gRmPk2u9op5h', 'Imaginary Person', 'Ty Segall', '[object Object]', 0, 0),
-(11, 1, '4L5btpyHA57o1ILuIFre08', 'High Tide', 'Basement Saints', '[object Object]', 0, 0),
-(12, 1, '209NMuyjXMryt970O7cjg3', 'Pieces Of The People We Love', 'The Rapture', '[object Object]', 0, 0),
-(13, 1, '3YStiWG2eIrJsfp2Kl0Ww5', 'Baby', 'Tomorrows Tulips', '[object Object]', 0, 0),
-(14, 1, '7ckO5VCuSYBQGceDzJMd6S', 'How You Like Me Now', 'The Heavy', '[object Object]', 0, 0),
-(15, 1, '0CLeZdKEUEpFgPySjDREfK', 'Astralplane', 'Blues Pills', '[object Object]', 0, 0),
-(16, 1, '4PeIEk396dG60CfpmWlrCs', 'Dragonaut', 'Sleep', '[object Object]', 0, 0),
-(17, 1, '0lSpF01QlNN5J2BkrMyoJi', 'Train To Nowhere', 'Savoy Brown', '[object Object]', 0, 0),
-(18, 1, '2IENiPNTterTWliYOPogQS', 'Freelance Fiend', 'Leaf Hound', '[object Object]', 0, 0),
-(19, 1, '3HyiHXZdB5CQTTtxIXYwJs', 'Numb', 'Gary Clark Jr.', '[object Object]', 0, 0),
-(20, 1, '0iTQRy2KuwHlfU5hXFIWQN', 'Blue Mountains', 'Diamond Rugs', '[object Object]', 0, 0),
-(21, 1, '5QuwldeRI8XLqDP7LPN7xJ', 'De Vida Voz', 'Allah-Las', '[object Object]', 0, 0),
-(22, 1, '3kIB9guKaClVhu2FFBag4K', 'Am I In Heaven', 'King Gizzard & The Lizard Wizard', '[object Object]', 0, 0),
-(23, 1, '1AWuKQ5utgc8A1TRR7MRiK', 'Sleep With the Lights On', 'The Wanton Bishops', '[object Object]', 0, 0),
-(24, 1, '6ToM0uwxtPKo9CMpbPGYvM', 'Break On Through (To The Other Side)', 'The Doors', '[object Object]', 0, 0),
-(25, 1, '5mglMPS52Tr5FuopEXiV6i', 'Sunday Evening', 'The Black Angels', '[object Object]', 0, 0),
-(51, 3, '32W1K50AaXGXoRBn3Zyax4', 'Mathematics', 'Mos Def', '[object Object]', 0, 0),
-(52, 3, '2W58HMaCbjcUfZnZaeHtcC', 'Memory Lane (Sittin\' in da Park)', 'Nas', '[object Object]', 0, 0),
-(53, 3, '1AHfovSnGPVYKaahRtA0U6', 'The Message', 'Nas', '[object Object]', 0, 0),
-(54, 3, '1fotoYONO343JjbC8XvPSl', 'Moment Of Truth', 'Gang Starr', '[object Object]', 0, 0),
-(55, 3, '3ZXzzBuqqKNw6tdYHh6jts', 'The Ownerz', 'Gang Starr', '[object Object]', 0, 0),
-(56, 3, '2FWmKZ3kNbVsKGhuNHsltW', 'Brooklyn Zoo', 'Ol\' Dirty Bastard', '[object Object]', 0, 0),
-(57, 3, '1HLBN25vUhcINJ81f50ul0', 'How High', 'Redman, Method Man', '[object Object]', 0, 0),
-(58, 3, '7djDOnyQLJJd2K9Yqqkvc3', 'The What', 'Method Man, The Notorious B.I.G.', '[object Object]', 0, 0),
-(59, 3, '0GWE2tHjf5V0byUsSeHDN2', 'Beautiful Losers', 'Hocus Pocus, Alice Russell', '[object Object]', 0, 0),
-(60, 3, '1MdrH4r4IgxmCBnqxyILux', 'J\'Attends', 'Hocus Pocus', '[object Object]', 0, 0),
-(61, 3, '3n6xP5DzNoZwvQx3YbjTVC', 'Chambers (feat. Fat Jon / Nujabes)', 'Phenam, Fat Jon, Nujabes', '[object Object]', 0, 0),
-(62, 3, '0RYXZvfx1cPWVVH0cZx8I6', 'Who\'s Theme', 'Nujabes', '[object Object]', 0, 0),
-(63, 3, '4vmWs0Swtl5751HjIwrDV3', 'Metropolis', 'Logic', '[object Object]', 0, 0),
-(64, 3, '6cjldDTVOzNmsy7tyj34jy', 'Gypsy', 'Bonobo', '[object Object]', 0, 0),
-(65, 3, '5LzUdQ1YSqZaqBQ4TAZGbQ', 'Still Grimey', 'Wu-Tang Clan', '[object Object]', 0, 0),
-(66, 3, '6wKIO4tGPfHG4MfO3HDOsv', 'Spin Live', 'DJ Premier', '[object Object]', 0, 0),
-(67, 3, '3xTq6Q5bgWVnW3MkNXR2gE', 'PEE-AN-OH', 'DJ Premier', '[object Object]', 0, 0),
-(68, 3, '5ckVDfifdJnKEabvjojde4', 'Concrete Schoolyard', 'Jurassic 5', '[object Object]', 0, 0),
-(69, 3, '44DZJ5uPW13pDNH3g088dv', 'JFK 2 LAX', 'Gang Starr', '[object Object]', 0, 0),
-(70, 3, '0sCoXQ8RjjeSMY7USunTsE', 'Back in the Game', 'Wu-Tang Clan, Ronald Isley', '[object Object]', 0, 0),
-(71, 3, '0nwnaHLObT2ZEkrNAfryEB', 'Le Bien, Le Mal', 'Guru\'s Jazzmatazz, Guru', '[object Object]', 0, 0),
-(72, 3, '3qlwWrTxktWrVXiMseo6uF', 'Twenty Fifty Three (feat. Mr. Lif)', 'L\'Orange, Kool Keith, Mr. Lif', '[object Object]', 0, 0),
-(73, 3, '0HyzhcPR7HllnpHB1ZtRxw', 'Sun Burn', 'Dirty Art Club', '[object Object]', 0, 0);
+INSERT INTO `playlist_tracks` (`id`, `fs_playlist`, `spotify_id`, `name`, `artist`, `album`, `added_at`, `added_by`, `deleted`, `liked`) VALUES
+(199, 21, '0sfQoW3g1Nzgi5KzYwRiPQ', 'Powerslide', 'Basement Saints', 'Free Souls', '2016-05-23 05:54:48', 'tiborjaner', 0, 0),
+(200, 21, '2Ii6TFETemSA0mYksu3Jzz', 'We Are the 21st Century Ambassadors of Peace & Magic', 'Foxygen', 'We Are the 21st Century Ambassadors of Peace & Magic', '2016-05-23 05:55:10', 'tiborjaner', 0, 0),
+(201, 21, '47z1UWrhWORC9tFa1aQ8kd', 'Black Grease', 'Black Angels', 'Passover', '2016-05-23 06:01:13', 'tiborjaner', 0, 0),
+(202, 21, '4R3i6bPqzQrOQGUmZNCgOe', 'Half Full Glass Of Wine', 'Tame Impala', 'Tame Impala', '2016-05-23 06:01:33', 'tiborjaner', 0, 0),
+(203, 21, '79s4MhMtQe6os40Yti6mUj', 'Golden Town', 'Brutus', 'Brutus', '2016-05-24 10:48:08', 'tiborjaner', 0, 0),
+(204, 21, '6Soku1wiB6mfcQp2s2W6a6', '20th Century Boy', 'T. Rex', 'Tanx (Deluxe Edition)', '2016-05-24 04:48:21', 'tiborjaner', 0, 0),
+(205, 21, '1CW1CIucafZQqlqMHvCAZa', 'What\'s in My Head?', 'Fuzz', 'Fuzz', '2016-05-25 02:19:59', 'tiborjaner', 0, 0),
+(206, 21, '6JhVeeiFVbHFZbg3R8QKRI', 'Carrion Crawler', 'Thee Oh Sees', 'Carrion Crawler / The Dream', '2016-05-26 10:21:51', 'tiborjaner', 0, 0),
+(207, 21, '5KUe1E1TpL3U3f1BBiSFJe', 'Free Souls', 'Basement Saints', 'Free Souls', '2016-05-27 02:31:38', 'tiborjaner', 0, 0),
+(208, 21, '0w3DZcTOHrCEpAwn9nM5A9', 'Better Call Saul Main Title Theme (Extended)', 'Little Barrie', 'Better Call Saul Main Title Theme (Extended)', '2016-05-28 08:44:14', 'tiborjaner', 0, 0),
+(209, 21, '0kpUik8UD6gRmPk2u9op5h', 'Imaginary Person', 'Ty Segall', 'Melted', '2016-05-29 03:21:43', 'tiborjaner', 0, 0),
+(210, 21, '4L5btpyHA57o1ILuIFre08', 'High Tide', 'Basement Saints', 'Get Ready', '2016-05-29 03:37:53', 'tiborjaner', 0, 0),
+(211, 21, '209NMuyjXMryt970O7cjg3', 'Pieces Of The People We Love', 'The Rapture', 'Pieces Of The People We Love (EU Version)', '2016-06-05 01:06:32', 'tiborjaner', 0, 0),
+(212, 21, '3YStiWG2eIrJsfp2Kl0Ww5', 'Baby', 'Tomorrows Tulips', 'When', '2016-06-05 01:15:04', 'tiborjaner', 0, 0),
+(213, 21, '7ckO5VCuSYBQGceDzJMd6S', 'How You Like Me Now', 'The Heavy', 'The House That Dirt Built', '2016-06-12 08:57:30', 'tiborjaner', 0, 0),
+(214, 21, '0CLeZdKEUEpFgPySjDREfK', 'Astralplane', 'Blues Pills', 'Bliss', '2016-06-20 08:48:06', 'tiborjaner', 0, 0),
+(215, 21, '4PeIEk396dG60CfpmWlrCs', 'Dragonaut', 'Sleep', 'Sleeps Holy Mountain', '2016-06-22 01:38:26', 'tiborjaner', 0, 0),
+(216, 21, '0lSpF01QlNN5J2BkrMyoJi', 'Train To Nowhere', 'Savoy Brown', 'Blue Matter (2013 Re-Issue)', '2016-07-03 06:09:38', 'tiborjaner', 0, 0),
+(217, 21, '2IENiPNTterTWliYOPogQS', 'Freelance Fiend', 'Leaf Hound', 'Growers Of Mushrooms', '2016-07-03 06:15:29', 'tiborjaner', 0, 0),
+(218, 21, '3HyiHXZdB5CQTTtxIXYwJs', 'Numb', 'Gary Clark Jr.', 'Blak And Blu (Deluxe Version)', '2016-07-07 10:29:41', 'tiborjaner', 0, 0),
+(219, 21, '0iTQRy2KuwHlfU5hXFIWQN', 'Blue Mountains', 'Diamond Rugs', 'Diamond Rugs', '2016-07-07 00:12:05', 'tiborjaner', 0, 0),
+(220, 21, '5QuwldeRI8XLqDP7LPN7xJ', 'De Vida Voz', 'Allah-Las', 'Worship The Sun', '2016-07-11 10:56:08', 'tiborjaner', 0, 0),
+(221, 21, '3pLzBdp8UXo0Vv4fBH42Ok', 'Reckless Life (Remixed By Gilby Clarke Featuring Tracii Guns)', 'Hollywood Rose', 'The Roots of Guns ‘n Roses', '2016-07-25 02:46:57', 'tiborjaner', 0, 0),
+(222, 21, '3kIB9guKaClVhu2FFBag4K', 'Am I In Heaven', 'King Gizzard & The Lizard Wizard', 'I\'m In Your Mind Fuzz', '2016-07-27 01:50:18', 'tiborjaner', 0, 0),
+(223, 21, '1AWuKQ5utgc8A1TRR7MRiK', 'Sleep With the Lights On', 'The Wanton Bishops', 'Sleep With the Lights On', '2016-07-30 07:21:08', 'tiborjaner', 0, 0),
+(224, 21, '6ToM0uwxtPKo9CMpbPGYvM', 'Break On Through (To The Other Side)', 'The Doors', 'The Doors', '2016-08-03 01:10:06', 'tiborjaner', 0, 0),
+(225, 21, '5mglMPS52Tr5FuopEXiV6i', 'Sunday Evening', 'The Black Angels', 'Clear Lake Forest', '2016-08-03 08:01:29', 'tiborjaner', 0, 0);
 
 -- --------------------------------------------------------
 
@@ -177,7 +156,8 @@ CREATE TABLE `vote` (
 --
 
 INSERT INTO `vote` (`id`, `fs_playlist_track`, `creation_time`, `type`, `vote_yes`, `vote_no`) VALUES
-(1, 2, '2016-08-10 07:23:39', 0, 1, 0);
+(1, 199, '2016-08-10 07:23:39', 0, 2, 0),
+(3, 200, '2016-08-10 19:25:10', 0, 1, 0);
 
 --
 -- Indexes for dumped tables
@@ -221,17 +201,17 @@ ALTER TABLE `vote`
 -- AUTO_INCREMENT for table `playlist`
 --
 ALTER TABLE `playlist`
-  MODIFY `id` int(8) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(8) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 --
 -- AUTO_INCREMENT for table `playlist_members`
 --
 ALTER TABLE `playlist_members`
-  MODIFY `id` int(8) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(8) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 --
 -- AUTO_INCREMENT for table `playlist_tracks`
 --
 ALTER TABLE `playlist_tracks`
-  MODIFY `id` int(8) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=74;
+  MODIFY `id` int(8) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=226;
 --
 -- AUTO_INCREMENT for table `user`
 --
@@ -241,11 +221,10 @@ ALTER TABLE `user`
 -- AUTO_INCREMENT for table `vote`
 --
 ALTER TABLE `vote`
-  MODIFY `id` int(8) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(8) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-
 
 --
 -- Create users and grant Access to application
