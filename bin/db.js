@@ -8,8 +8,10 @@ var dbName = "application";
 var tabUsersName = "user";
 var tabPlaylistName = "playlist";
 var tabPlaylistMemberName = "playlist_members";
-var tabPlaylistTrackName = "playlist_tracks";
+var tabTrackName = "track";
 var tabVoteName = "vote";
+var tabSubPlaylistName = "sub_playlist";
+var tabSubPlaylistTrackName = "sub_playlist_track";
 
 var connection = mysql.createConnection({
     host: "localhost",
@@ -76,6 +78,8 @@ exports.doesPlaylistExist = function doesPlaylistExist(playlistId, callback) {
 //TODO: nöd so unglaublich verschachtlete code schribe tibor... sorry ich verstaas eifach nöd
 /**
  * create new Playlist and add all Tracks to it!
+ *  If a track is a duplicate of another, this track will be deleted on spotify!
+ *  (to ensure that we can refer to the right track! else it would mess around with our database)
  *
  * @param spotifyApi: used to get Tracks from Spotify server)
  * @param playlistId: spotifyId of playlist
@@ -94,11 +98,11 @@ exports.createPlaylist = function createPlaylist(spotifyApi, playlistId, playlis
                     //create Playlist on database
                     var post = {
                         spotify_id: playlistId,
-                        name: playlistName
+                        name: playlistName,
+                        fs_owner: dbUserId
                     };
                     connection.query("INSERT INTO " + tabPlaylistName + " SET ?", post, function (err, result) {
-                        //Neat!
-                        dbPlaylistId = result.insertId;
+                        var dbPlaylistId = result.insertId;
                         if (dbPlaylistId != -1 && dbUserId != -1) {
                             //everything ok!
 
@@ -108,40 +112,58 @@ exports.createPlaylist = function createPlaylist(spotifyApi, playlistId, playlis
                                 fs_playlist: dbPlaylistId
                             }
                             connection.query("INSERT INTO " + tabPlaylistMemberName + " SET ?", post, function(err, result) {
-                                //Neat!
+                                if (err) {
+                                    console.log("Error: could not isert member to db (createPlaylist())");
+                                    console.log(err);
+                                }
                             })
 
                             //create all Tracks
                             for (var i in response) {
                                 var track = response[i].track;
-                                //get artist name
-                                var artist = "";
-                                for (var j in track.artists) {
-                                    artist += track.artists[j].name + ", ";
-                                }
-                                artist = artist.slice(0, -2);
 
-                                var post = {
-                                    fs_playlist: dbPlaylistId,
-                                    spotify_id: track.id,
-                                    name: track.name,
-                                    artist: artist,
-                                    album: track.album.name,
-                                    added_at: moment(response[i].added_at).format('YYYY-MM-DD hh:mm:ss'),
-                                    added_by: response[i].added_by.id,
-                                    deleted: 0,
-                                    liked: 0
-                                }
-                                console.log(post);
-                                connection.query("INSERT INTO " + tabPlaylistTrackName + " SET ?", post, function(err, result) {
-                                    //neat!
-                                    if (err) {
-                                        console.log("ERROR: could not insert data: ", err);
+                                //check if track already exists
+                                getTrackIdOnDatabase(dbPlaylistId, track.id, function(err, dbTrackId) {
+                                    if (!err && dbTrackId != -1) {
+                                        //Track already exists
+                                        //TODO: delete Track on spotify
+                                    } else if (!err) {
+                                        //continue as normal
+                                        //get artist name
+                                        var artist = "";
+                                        for (var j in track.artists) {
+                                            artist += track.artists[j].name + ", ";
+                                        }
+                                        artist = artist.slice(0, -2);
+
+                                        var post = {
+                                            fs_playlist: dbPlaylistId,
+                                            spotify_id: track.id,
+                                            name: track.name,
+                                            artist: artist,
+                                            album: track.album.name,
+                                            added_at: moment(response[i].added_at).format('YYYY-MM-DD hh:mm:ss'),
+                                            added_by: response[i].added_by.id,
+                                            deleted: 0,
+                                        }
+                                        console.log(post);
+                                        connection.query("INSERT INTO " + tabTrackName + " SET ?", post, function(err, result) {
+                                            //neat!
+                                            if (err) {
+                                                console.log("ERROR: could not create Track on database (createPlaylist()");
+                                                console.log(err);
+                                            }
+                                        })
+                                    } else {
+                                        console.log("Error: checking, if track already exists (createPlaylist())");
+                                        console.log(err);
                                     }
-                                })
+                                });
+
                             }
                         } else {
                             console.log("ERROR: playlist could not be created (createPlaylist())");
+                            if (!err) { console.log(err); }
                         }
                     });
                 } else {
@@ -169,7 +191,7 @@ function getUserIdOnDatabase(userId, callback) {
                 callback(null, result[i].id);
             }
         } else {
-            callback(1, null);
+            callback({msg: "Error: there are multiple Users on Database!"}, null);
         }
     });
 }
@@ -189,7 +211,26 @@ function getPlaylistIdOnDatabase(playlistId, callback) {
                 callback(null, result[i].id);
             }
         } else {
-            return callback(1, null)
+            return callback({msg: "Error: there are multiple playlists existing on database!"}, null)
+        }
+    });
+}
+
+
+/**
+ * get Sub Playlist Id used on database
+ *
+ * @param subPlaylistId: spotifyId of playlist
+ * @param callback(err, dbSubPlaylistId)
+ */
+function getSubPlaylistIdOnDatabase(subPlaylistId, callback) {
+    connection.query("SELECT * FROM " + tabSubPlaylistName + " WHERE ?", {spotify_id: subPlaylistId}, function(err, result, fields) {
+        if (err) {
+            callback(err, null)
+        } else if (result.length == 1) {
+            callback(null, result[0].id);
+        } else {
+            return callback({msg: "Error: there are multiple sub playlists existing on database!"}, null)
         }
     });
 }
@@ -200,18 +241,20 @@ function getPlaylistIdOnDatabase(playlistId, callback) {
  *
  * @param dbPlaylistId: playlist Id on Database!!
  * @param trackId: spotifyId of Track
- * @param callback(err, dbTrackId)
+ * @param callback(err, dbTrackId) dbTrackId returns -1 if track does not exist
  */
 function getTrackIdOnDatabase(dbPlaylistId, trackId, callback) {
-    connection.query("SELECT * FROM " + tabPlaylistTrackName + " WHERE spotify_id = ? AND fs_playlist = ?", [trackId, dbPlaylistId], function(err, result, fields) {
+    connection.query("SELECT * FROM " + tabTrackName + " WHERE spotify_id = ? AND fs_playlist = ?", [trackId, dbPlaylistId], function(err, result, fields) {
         if (err) {
             callback(err, null)
         } else if (result.length == 1) {
             for (var i in result) {
                 callback(null, result[i].id);
             }
+        } else if (result.length == 0) {
+            callback(null, -1);
         } else {
-            return callback(1, null)
+            return callback({msg: "Error: multiple entries of the same track and playlist exist!"}, null)
         }
     });
 }
@@ -224,16 +267,11 @@ function getTrackIdOnDatabase(dbPlaylistId, trackId, callback) {
  * @param callback(err, trackExists [boolean])
  */
 function doesVoteExist(playlistId, trackId, callback) {
-    //Parameter sind Spotify ID's
-    //return parameter: callback(err, voteExists)
     getPlaylistIdOnDatabase(playlistId, function(err, dbPlaylistId) {
         if (!err) {
             //continue
-            var post = {
-                fs_playlist: dbPlaylistId,
-                spotify_id: trackId
-            }
-            connection.query("SELECT * FROM `vote` INNER JOIN playlist_tracks ON vote.fs_playlist_track = playlist_tracks.id WHERE ?", post, function(err, result, fields) {
+            var post = [dbPlaylistId, trackId]
+            connection.query("SELECT * FROM `vote` INNER JOIN track ON vote.fs_track = track.id WHERE fs_playlist = ? AND spotify_id = ?", post, function(err, result, fields) {
                 if (err) {
                     callback(err, null)
                 } else if (result.length == 1) {
@@ -259,14 +297,11 @@ function doesVoteExist(playlistId, trackId, callback) {
  *                              - type
  */
 function getVoteIdOnDatabase(playlistId, trackId, callback) {
-    //Parameter sind Spotify ID's
-    //return parameter: callback(err, voteExists)
     getPlaylistIdOnDatabase(playlistId, function(err, dbPlaylistId) {
         if (!err) {
             //continue
             var post = [dbPlaylistId, trackId];
-            connection.query("SELECT vote.id, vote.type, playlist_tracks.fs_playlist, playlist_tracks.spotify_id " +
-                                "FROM `vote` INNER JOIN playlist_tracks ON vote.fs_playlist_track = playlist_tracks.id WHERE fs_playlist = ? AND spotify_id = ?", post, function(err2, result, fields) {
+            connection.query("SELECT vote.id, vote.type, track.fs_playlist, track.spotify_id FROM `vote` INNER JOIN track ON vote.fs_track = track.id WHERE fs_playlist = ? AND spotify_id = ?", post, function(err2, result, fields) {
                 if (err2) {
                     callback(err2, null)
                 } else if (result.length == 1) {
@@ -297,36 +332,125 @@ function getVoteIdOnDatabase(playlistId, trackId, callback) {
  *
  * @param playlistId: spotifyId of playlist
  * @param trackId: spotifyId of track
- * @param type: type of vote:
- *              0:  Vote out of "main" playlist
- *              1:  Vote in to "main" playlist, if it was vouted out before
- *              2:  Vote in "best of" playlist
- *              3:  vote back from "best of" into "main" playlist
+ * @param vote: type of vote:
+ *              0:  undef
+ *              1:  Delete-vote
+ *              2:  Add/Delete-vote
+ *              3:  Move-vote
+ *            If Type 0 the format is: {type: 0}
+ *            If type 1 the format is: {type: 1, subPlaylist: spotifyId}
+ *            If type 2 the format is: {type: 2, fromSubPlaylist: spotifyId, toSubPlaylist: spotifyId}
  */
-exports.createVote = function createVote(playlistId, trackId, type) {
+exports.createVote = function createVote(playlistId, trackId, vote) {
     getPlaylistIdOnDatabase(playlistId, function(err, dbPlaylistId) {
         if (!err) {
             getVoteIdOnDatabase(playlistId, trackId, function(err, data) {
-                var dbVoteId = data.dbVoteId
                 if (!err) {
+                    var dbVoteId = data.dbVoteId
                     if (dbVoteId == -1) {
                         getTrackIdOnDatabase(dbPlaylistId, trackId, function(err, dbTrackId) {
                             if (!err) {
                                 //Vote does not exist, create a new one
                                 var post = {
-                                    fs_playlist_track: dbTrackId,
-                                    type: type,
+                                    fs_track: dbTrackId,
+                                    type: vote.type,
                                     vote_yes: 1,
                                     vote_no: 0
                                 }
-                                connection.query("INSERT INTO " + tabVoteName + " SET ?", post, function (err, res) {
-                                    if (!err) {
-                                        //Neat! return
-                                    } else {
-                                        console.log("Error: could not create new Vote (voteTrack()");
-                                        console.log(err);
-                                    }
-                                });
+
+                                //Set remaining Arguments depending on vote type. If error, abort by setting type to 0
+                                switch(vote.type) {
+                                    case 1:
+                                        //Delete-vote:
+                                        //set end_time
+                                        getVoteEndTime(null, dbPlaylistId, function(err, endTime) {
+                                            if (!err) {
+                                                post.end_time = endTime;
+                                                createVote()
+                                            } else {
+                                                console.log("Error: could not get Vote Time!");
+                                                console.log(err);
+                                            }
+                                        });
+                                        break;
+                                    case 2:
+                                        //Add/Remove-vote
+                                        //set sub_playlist1
+                                        getSubPlaylistIdOnDatabase(vote.subPlaylist, function(err, dbSubPlaylistId) {
+                                            if (!err && dbSubPlaylistId != -1) {
+                                                post.sub_playlist1 = dbSubPlaylistId;
+                                                if (post.end_time != null) {
+                                                    createVote();
+                                                }
+                                            } else {
+                                                console.log("Error: sub playlist does not exist or there is an error!");
+                                                console.log(err);
+                                            }
+                                        });
+                                        //set end_time
+                                        getVoteEndTime(vote.subPlaylist, dbPlaylistId, function(err, endTime) {
+                                            if (!err) {
+                                                post.end_time = endTime;
+                                                if (post.sub_playlist1 != null) {
+                                                    createVote();
+                                                }
+                                            } else {
+                                                console.log("Error: could not get Vote Time!");
+                                                console.log(err);
+                                            }
+                                        });
+                                        break;
+                                    case 3:
+                                        //Add/Remove-vote
+                                        //set sub_playlist1
+                                        getSubPlaylistIdOnDatabase(vote.fromSubPlaylist, function(err, dbSubPlaylistId) {
+                                            if (!err && dbSubPlaylistId != -1) {
+                                                post.sub_playlist1 = dbSubPlaylistId;
+                                                if (post.subPlaylist2 != null && post.end_time != null) {
+                                                    createVote();
+                                                }
+                                            } else {
+                                                console.log("Error: sub playlist does not exist! abort creating Vote!");
+                                                post.type = 0;
+                                            }
+                                        });
+                                        //set sub_playlist2
+                                        getSubPlaylistIdOnDatabase(vote.fromSubPlaylist, function(err, dbSubPlaylistId) {
+                                            if (!err && dbSubPlaylistId != -1) {
+                                                post.sub_playlist2 = dbSubPlaylistId;
+                                                if (post.sub_playlist1 != null && post.end_time != null) {
+                                                    createVote();
+                                                }
+                                            } else {
+                                                console.log("Error: sub playlist does not exist or database error");
+                                                console.log(err);
+                                            }
+                                        });
+                                        //set end_time
+                                        getVoteEndTime(null, dbPlaylistId, function(err, endTime) {
+                                            if (!err) {
+                                                post.end_time = endTime;
+                                                if (post.sub_playlist1 != null && post.sub_playlist2 != null) {
+                                                    createVote();
+                                                }
+                                            } else {
+                                                console.log("Error: could not get Vote Time!");
+                                                console.log(err);
+                                            }
+                                        });
+                                        break;
+                                }
+
+                                function createVote() {
+                                    connection.query("INSERT INTO " + tabVoteName + " SET ?", post, function (err, res) {
+                                        if (!err) {
+                                            //Neat! return
+                                        } else {
+                                            console.log("Error: could not create new Vote (voteTrack()");
+                                            console.log(err);
+                                        }
+                                    });
+                                }
                             } else {
                                 console.log("Error: could not get Track ID on Database! (createVote())");
                                 console.log(err);
@@ -353,16 +477,11 @@ exports.createVote = function createVote(playlistId, trackId, type) {
  *
  * @param playlistId: spotifyId of playlist
  * @param trackId: spotifyId of Track
- * @param type: type of vote:
- *              0:  Vote out of "main" playlist
- *              1:  Vote in to "main" playlist, if it was vouted out before
- *              2:  Vote in "best of" playlist
- *              3:  vote back from "best of" into "main" playlist
  * @param voteYes: boolean:
  *              true:   vote Yes to selected vote
  *              false:  vote No to selected Vote
  */
-exports.vote = function vote(playlistId, trackId, type, voteYes) {
+exports.vote = function vote(playlistId, trackId, voteYes) {
     getPlaylistIdOnDatabase(playlistId, function(err, dbPlaylistId) {
         if (!err) {
             getVoteIdOnDatabase(playlistId, trackId, function(err2, data) {
@@ -370,7 +489,7 @@ exports.vote = function vote(playlistId, trackId, type, voteYes) {
                     if (data.dbVoteId == -1) {
                         //vote does not exist! do nothing
                         console.log("Error: vote does not exist (vote())")
-                    } else if (data.type == type) {
+                    } else  {
                         //set query depending on voteYes
                         if (voteYes) {
                             var updateQuery = "UPDATE " + tabVoteName + " SET vote_yes = vote_yes + 1 WHERE id = ?";
@@ -387,9 +506,6 @@ exports.vote = function vote(playlistId, trackId, type, voteYes) {
                                 console.log(err3);
                             }
                         });
-                    } else {
-                        //types are not equal
-                        console.log("Error: vote types are not equal! (vote())", data);
                     }
                 } else {
                     console.log("Error: could not get Vote id from Database (vote())");
@@ -398,6 +514,180 @@ exports.vote = function vote(playlistId, trackId, type, voteYes) {
             });
         } else {
             console.log("Error: could not get playlist id from Database (voteTrack()");
+            console.log(err);
+        }
+    });
+}
+
+/**
+ * is User a member of Playlist
+ *
+ * @param dbPlaylistId: Database ID of playlist
+ * @param userId: spotify_id (or username) of user
+ * @param callback: function(error, userIsMember [boolean])
+ */
+function isUserMemberOfPlaylist(dbPlaylistId, userId, callback) {
+    getUserIdOnDatabase(userId, function(err, dbUserId) {
+        if (!err) {
+            var post = [dbPlaylistId, dbUserId];
+            connection.query("SELECT * FROM " + tabPlaylistMemberName + " WHERE fs_playlist = ? AND fs_user = ?", post, function(err2, data) {
+                if (!err2) {
+                    if (data.length == 1) {
+                        callback(null, true);
+                    } else if (data.length == 0) {
+                        callback(null, false);
+                    } else {
+                        callback({msg: "FATAL ERROR: multiple playlist-member entries of the same user and playlist do exist"}, null);
+                    }
+                } else {
+                    callback(err2, null);
+                }
+            });
+        } else {
+            callback(err, null);
+        }
+    });
+}
+
+/**
+ * Get Settings of Playlists on database and calculate End Time of Vote
+ *  if dbSubPlaylist = null, it will not check it's settings. If set to dbPlaylistId.
+ *
+ * @param dbSubPlaylistId
+ * @param dbPlaylistId
+ * @param callback = function(err, endTime)
+ */
+function getVoteEndTime(dbSubPlaylistId, dbPlaylistId, callback) {
+    if (!dbSubPlaylistId) {
+        getSettingsOnMainPlaylist();
+    } else {
+        //get Settings of sub Playlist
+        connection.query("SELECT vote_time FROM " + tabSubPlaylistName + " WHERE ?", {id: dbSubPlaylistId}, function(err, data, fields) {
+            if (!err) {
+                if (data.length == 1) {
+                    calculateEndTime(data[0].vote_time);
+                } else {
+                    callback({msg: "Could not find sub Playlist or multiple Playlists found. Number of Sub Playlist found: " + data.length}, null);
+                }
+            } else {
+                callback(err, null);
+            }
+        });
+    }
+    function getSettingsOnMainPlaylist() {
+        connection.query("SELECT vote_time FROM " + tabPlaylistName + " WHERE ?", {id: dbPlaylistId}, function(err, data, fields) {
+            if (!err) {
+                if (data.length == 1) {
+                    calculateEndTime(data[0].vote_time);
+                } else {
+                    callback({msg: "Could not find Playlist or multiple Playlists found. Number of Playlist found: " + data.length}, null);
+                }
+            } else {
+                callback(err, null);
+            }
+        });
+    }
+    function calculateEndTime(voteTime) {
+        var endTime = moment().add(voteTime, 's').format('YYYY-MM-DD hh:mm:ss');
+        callback(null, endTime)
+    }
+}
+
+/**
+ * GetPlaylistTracks *
+ *
+ * @param playlistId
+ * @param userId
+ * @param sortAfter
+ * @param ascending
+ * @param callback: function(err, data)
+ *           data:
+ *              playlistId
+ *              dbPlaylistId
+ *              tracks [
+ *                  track {id, name, artist, album},
+ *                  track {...}
+ *              ]
+ */
+
+exports.getPlaylistTracks = function getPlaylistTracks(playlistId, userId, sortAfter, ascending, callback) {
+    //get playlist id from Database
+    getPlaylistIdOnDatabase(playlistId, function(err, dbPlaylistId) {
+        if (!err) {
+            isUserMemberOfPlaylist(dbPlaylistId, userId, function(err2, userIsMember) {
+                if (!err2) {
+                    if (userIsMember) {
+                        var dbData = {
+                            playlistId      : playlistId,
+                            dbPlaylistId    : dbPlaylistId,
+                            tracks          : [],
+                            subPlaylists    : []
+                        };
+                        var getTracksDone = false;
+                        var getSubPlaylistsDone = false;
+
+                        //get Track
+                        var direction = "";
+                        if (ascending) { direction = "ASC"; } else { direction = "DESC"; }
+                        var post = [dbPlaylistId, sortAfter];
+                        connection.query("SELECT * FROM " + tabTrackName + " WHERE fs_playlist = ? ORDER BY ? " + direction, post, function(err3, data) {
+                            if (!err3) {
+                                for (var i in data) {
+                                    dbData.tracks.push({
+                                        track: {
+                                            name        : data[i].name,
+                                            artist      : data[i].artist,
+                                            album       : data[i].album,
+                                            addedAt     : data[i].added_at,
+                                            addedBy     : data[i].added_by,
+                                            deleted     : data[i].deleted,
+                                            spotifyId   : data[i].spotify_id,
+                                            dbId        : data[i].id
+                                        }
+                                    });
+                                }
+                                getTracksDone = true;
+                                if (getSubPlaylistsDone) {
+                                    callback(null, dbData);
+                                }
+                            } else {
+                                console.log("Error: could not get track list from Database (getPlaylistTracks())");
+                                console.log(err3);
+                            }
+                        });
+
+                        //get SubPlaylists
+                        connection.query("SELECT * FROM " + tabSubPlaylistName + " WHERE ?", {fs_playlist: dbPlaylistId}, function(err3, data) {
+                            if (!err3) {
+                                for (var i in data) {
+                                    dbData.subPlaylists.push({
+                                        subPlaylist: {
+                                            name        : data[i].name,
+                                            spotifyId   : data[i].spotify_id,
+                                            dbId        : data[i].id
+                                        }
+                                    });
+                                }
+                                getSubPlaylistsDone = true;
+                                if (getTracksDone) {
+                                    callback(null, dbData);
+                                }
+                            } else {
+                                console.log("Error: could not get subPlaylists from Database (getPlaylistTracks())");
+                                console.log(err3);
+                            }
+                        });
+
+                    } else {
+                        callback({msg: "Error: user is not authorized to read this playlist!"}, null);
+                    }
+                } else {
+                    console.log("Error while checking if user is Member of Playlist (getPlaylistTrack())");
+                    console.log(err2);
+                }
+            });
+        } else {
+            console.log("Error: could not get playlist Id: " + playlistId + "(getPlaylistTracks())");
             console.log(err);
         }
     });
