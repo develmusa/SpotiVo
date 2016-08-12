@@ -33,6 +33,16 @@ $ sudo apt-get install phpmyadmin
 $ sudo dpkg-reconfigure -plow phpmyadmin
 ```
 
+### mongoDB:
+[Install MongoDB](https://docs.mongodb.com/manual/installation/)
+
+Import Database:
+```bash
+$ mongorestore --db session [ProjectDirectory]/mongo/session/
+```
+
+
+
 ## References
 ###Tutorials
 ###Code Snippets
