@@ -171,10 +171,9 @@ router.get('/playlist', function(req, res, next) {
           if (!playlistExists) {
               req.app.locals.db.createPlaylist(spotifyApi, requestPlaylistId, data.body.name, req.session.userId);
           } else {
-              console.log("start");
               req.app.locals.db.getPlaylistTracks(requestPlaylistId, req.session.userId, "name", true, function(err, data) {
-                console.log(err);
-                console.log(data);
+                  console.log(err)
+                  console.log(JSON.stringify(data, null, 4));
               })
           }
         });

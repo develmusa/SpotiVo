@@ -602,12 +602,21 @@ function getVoteEndTime(dbSubPlaylistId, dbPlaylistId, callback) {
  * @param ascending
  * @param callback: function(err, data)
  *           data:
- *              playlistId
- *              dbPlaylistId
+ *              playlistId,
+ *              dbPlaylistId,
  *              tracks [
- *                  track {id, name, artist, album},
- *                  track {...}
+ *                  track: {id, name, artist, album, addedAt, addedBy, spotifyId, dbId,
+ *                          subPlaylists [subPlaylist: {name, spotifyId, dbId},
+ *                                        subPlaylist: {...}
+ *                          ]
+ *                  },
+ *                  track: {...}
+ *              ],
+ *              subPlaylists[
+ *                  subPlaylist{name, spotifyId, dbId},
+ *                  subPlaylist{...}
  *              ]
+ *
  */
 
 exports.getPlaylistTracks = function getPlaylistTracks(playlistId, userId, sortAfter, ascending, callback) {
@@ -629,22 +638,53 @@ exports.getPlaylistTracks = function getPlaylistTracks(playlistId, userId, sortA
                         //get Track
                         var direction = "";
                         if (ascending) { direction = "ASC"; } else { direction = "DESC"; }
-                        var post = [dbPlaylistId, sortAfter];
-                        connection.query("SELECT * FROM " + tabTrackName + " WHERE fs_playlist = ? ORDER BY ? " + direction, post, function(err3, data) {
+                        var post = [dbPlaylistId];
+                        var sqlQuery = "SELECT t.id, t.spotify_id, t.name, t.artist, t.album, t.added_at, t.added_by, sp.id AS sub_playlist_id, sp.name AS sub_playlist_name, sp.spotify_id AS sub_playlist_spotify_id " +
+                                "FROM " + tabTrackName + " AS t " +
+                                "LEFT OUTER JOIN " + tabSubPlaylistTrackName + " AS spt ON t.id = spt.fs_track " +
+                                "LEFT OUTER JOIN " + tabSubPlaylistName +" AS sp ON spt.fs_sub_playlist = sp.id " +
+                                "WHERE t.fs_playlist = ?  AND t.deleted = 0 " +
+                                "ORDER BY t." + sortAfter + " " + direction;
+                        connection.query(sqlQuery, post, function(err3, data) {
                             if (!err3) {
+                                var index = -1;
+                                var lastId = "";
                                 for (var i in data) {
-                                    dbData.tracks.push({
-                                        track: {
-                                            name        : data[i].name,
-                                            artist      : data[i].artist,
-                                            album       : data[i].album,
-                                            addedAt     : data[i].added_at,
-                                            addedBy     : data[i].added_by,
-                                            deleted     : data[i].deleted,
-                                            spotifyId   : data[i].spotify_id,
-                                            dbId        : data[i].id
+                                    if (lastId != data[i].spotify_id) {
+                                        //new Entry
+                                        index++;
+                                        lastId = data[i].spotify_id;
+                                        dbData.tracks.push({
+                                            track: {
+                                                name        : data[i].name,
+                                                artist      : data[i].artist,
+                                                album       : data[i].album,
+                                                addedAt     : data[i].added_at,
+                                                addedBy     : data[i].added_by,
+                                                spotifyId   : data[i].spotify_id,
+                                                dbId        : data[i].id,
+                                                subPlaylists: []
+                                            }
+                                        });
+                                        if (data[i].sub_playlist_id != null) {
+                                            dbData.tracks[index].track.subPlaylists.push({
+                                                subPlaylist: {
+                                                    name: data[i].sub_playlist_name,
+                                                    spotifyId: data[i].sub_playlist_spotify_id,
+                                                    dbId: data[i].sub_playlist_id
+                                                }
+                                            });;
                                         }
-                                    });
+                                    } else {
+                                        //existing Entry
+                                        dbData.tracks[index].track.subPlaylists.push({
+                                            subPlaylist: {
+                                                name: data[i].sub_playlist_name,
+                                                spotifyId: data[i].sub_playlist_spotify_id,
+                                                dbId: data[i].sub_playlist_id
+                                            }
+                                        });
+                                    }
                                 }
                                 getTracksDone = true;
                                 if (getSubPlaylistsDone) {
