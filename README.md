@@ -22,6 +22,7 @@ $ sudo apt-get -y install mysql-server
 Import Database:
 ```bash
 $ sudo mysql -u <username> -p < mysql.sql
+$ sudo mysql -u <username> -p < user.sql
 ```
 
 ####Optional:
