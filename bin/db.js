@@ -732,3 +732,187 @@ exports.getPlaylistTracks = function getPlaylistTracks(playlistId, userId, sortA
         }
     });
 }
+
+/**
+ * Get a list of all managed Playlists where the user is member of
+ *
+ * @param userId: Spotify-id (username) of current user
+ * @param callback: function(err, data)
+ *          data: {
+ *              playlists [
+ *                  playlist: {
+ *                      spotifyId, name, owner, dbId, numTracks
+ *                      subPlaylists[
+ *                          subPlaylist: {name, numTracks, spotifyId, dbId},
+ *                          subPlaylist: {..}
+ *                      ]
+ *                  },
+ *                  playlist: {...}
+ *              ]
+ *          }
+ */
+exports.getManagedPlaylists = function getManagedPlaylists(userId, callback) {
+
+    var query = "SELECT `playlist`.name AS playlist_name, `playlist`.id AS playlist_id, `playlist`.`spotify_id` AS playlist_spotify_id, " +
+        "`sub_playlist`.name AS sub_playlist_name, `sub_playlist`.`spotify_id` AS sub_playlist_spotify_id, `sub_playlist`.`id` AS sub_playlist_id, " +
+        "( SELECT COUNT(id) FROM track WHERE track.fs_playlist = `playlist`.`id`) AS track_count, " +
+        "( SELECT COUNT(id) FROM `sub_playlist_track` WHERE `sub_playlist_track`.`fs_sub_playlist` = `sub_playlist`.`id` ) AS sub_playlist_track_count " +
+        " FROM `sub_playlist` " +
+        "INNER JOIN `playlist` ON `sub_playlist`.fs_playlist = `playlist`.id " +
+        "RIGHT JOIN `playlist_members` ON `playlist`.id = `playlist_members`.fs_playlist " +
+        "INNER JOIN `user` ON `playlist_members`.fs_user = `user`.id " +
+        "WHERE `user`.spotify_id = ?";
+    connection.query(query, userId, function (err, data) {
+        if (!err) {
+            prepareOutput(data);
+        } else {
+            console.log("Error: could not get List of Playlists (getManagedPlaylists())");
+            console.log(err);
+        }
+    });
+
+    function prepareOutput(data) {
+        //iterate all entries
+        var counter = -1;
+        var output = {playlists: []};
+        for (var i in data) {
+            if (counter == -1 || output.playlists[counter].playlist.spotifyId != data[i].playlist_spotify_id) {
+
+                //create new Entry for Playlist
+                output.playlists.push({
+                    playlist: {
+                        spotifyId: data[i].playlist_spotify_id,
+                        name: data[i].playlist_name,
+                        dbId: data[i].playlist_id,
+                        numTracks: data[i].track_count,
+                        subPlaylists: []
+                    }
+                });
+                output.playlists[++counter].playlist.subPlaylists.push({
+                    subPlaylist: {
+                        name: data[i].sub_playlist_name,
+                        numTracks: data[i].sub_playlist_track_count,
+                        spotify_id: data[i].sub_playlist_spotify_id,
+                        dbId: data[i].sub_playlist_id
+                    }
+                });
+            } else {
+                output.playlists[counter].playlist.subPlaylists.push({
+                    subPlaylist: {
+                        name: data[i].sub_playlist_name,
+                        numTracks: data[i].sub_playlist_track_count,
+                        spotify_id: data[i].sub_playlist_spotify_id,
+                        dbId: data[i].sub_playlist_id
+                    }
+                })
+            }
+        }
+        callback(output);
+    }
+}
+
+/**
+ * Returns 1 if the daemon is running
+ *
+ * @param callback: function(err, daemonRunning)
+ */
+exports.checkDaemonState = function checkDaemonState(callback) {
+    connection.query("SELECT * FROM `daemon` WHERE `id` = 1", null, function(err, data) {
+        if (!err) {
+            callback(err, data[0].running);
+        } else {
+            console.log("Error: could not get Daemon State!");
+            console.log(err);
+            callback(err, null);
+        }
+    });
+}
+
+/**
+ * Set state of Daemon on Database
+ *
+ * @param state: 0 if not running, 1 if running
+ * @param callback: function(err), err = null if no errors ocurred
+ */
+exports.setDaemonRunning = function setDaemonRunning(state, callback) {
+    connection.query("UPDATE `daemon` SET `running` = ? WHERE `id` = 1;", state, function(err, data) {
+        if (!err) {
+            callback(null);
+        } else {
+            console.log("Error: could not get Daemon State!");
+            console.log(err);
+            callback(err);
+        }
+    });
+}
+
+
+/**
+ * Get a list of all managed Playlists on database
+ *
+ * @param userId: Spotify-id (username) of current user
+ * @param callback: function(err, data)
+ *          data: {
+ *              playlists [
+ *                  playlist: {
+ *                      spotifyId, name, owner, dbId
+ *                      subPlaylists[
+ *                          subPlaylist: {name, spotifyId, dbId},
+ *                          subPlaylist: {..}
+ *                      ]
+ *                  },
+ *                  playlist: {...}
+ *              ]
+ *          }
+ */
+exports.getAllPlaylists = function getAllPlaylists(callback) {
+    var query = "SELECT `playlist`.name AS playlist_name, `playlist`.id AS playlist_id, `playlist`.`spotify_id` AS playlist_spotify_id, " +
+      "`sub_playlist`.name AS sub_playlist_name, `sub_playlist`.`spotify_id` AS sub_playlist_spotify_id, `sub_playlist`.`id` AS sub_playlist_id " +
+      " FROM `sub_playlist` " +
+      "INNER JOIN `playlist` ON `sub_playlist`.fs_playlist = `playlist`.id " +
+      "WHERE 1";
+    connection.query(query, null, function (err, data) {
+        if (!err) {
+            prepareOutput(data);
+        } else {
+            console.log("Error: could not get List of Playlists (getManagedPlaylists())");
+            console.log(err);
+        }
+    });
+
+    function prepareOutput(data) {
+        //iterate all entries
+        var counter = -1;
+        var output = {playlists: []};
+        for (var i in data) {
+            if (counter == -1 || output.playlists[counter].playlist.spotifyId != data[i].playlist_spotify_id) {
+
+                //create new Entry for Playlist
+                output.playlists.push({
+                    playlist: {
+                        spotifyId: data[i].playlist_spotify_id,
+                        name: data[i].playlist_name,
+                        dbId: data[i].playlist_id,
+                        subPlaylists: []
+                    }
+                });
+                output.playlists[++counter].playlist.subPlaylists.push({
+                    subPlaylist: {
+                        name: data[i].sub_playlist_name,
+                        spotify_id: data[i].sub_playlist_spotify_id,
+                        dbId: data[i].sub_playlist_id
+                    }
+                });
+            } else {
+                output.playlists[counter].playlist.subPlaylists.push({
+                    subPlaylist: {
+                        name: data[i].sub_playlist_name,
+                        spotify_id: data[i].sub_playlist_spotify_id,
+                        dbId: data[i].sub_playlist_id
+                    }
+                })
+            }
+        }
+        callback(output);
+    }
+}
