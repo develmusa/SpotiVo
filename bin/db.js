@@ -937,14 +937,25 @@ exports.vote = function vote(userId, playlistId, trackId, voteYes) {
   }
 
   function checkVote() {
-    checkIfUserAlreadyVoted(dbVoteId, userId, function(err, alreadyVoted) {
+    isUserMemberOfPlaylist(dbPlaylistId, userId, function(err, userIsMember) {
       if (!err) {
-        if (!alreadyVoted) {
-          doVote();
+        if (userIsMember) {
+          checkIfUserAlreadyVoted(dbVoteId, userId, function(err, alreadyVoted) {
+            if (!err) {
+              if (!alreadyVoted) {
+                doVote();
+              }
+            }
+            //else cancel
+          });
+        } else {
+          console.log("Error: User who was not member of playlist tried to vote! Abort");
         }
+      } else {
+        console.log("Error: could not check if user is member of playlist!");
+        console.log(err);
       }
-      //else cancel
-    })
+    });
   }
 
   function doVote() {

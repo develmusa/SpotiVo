@@ -186,7 +186,7 @@ router.get('/playlist', function (req, res, next) {
         if (!playlistExists) {
           req.app.locals.db.createPlaylist(spotifyApi, requestPlaylistId, data.body.name, req.session.userId);
         } else {
-          req.app.locals.db.vote(req.session.userId, requestPlaylistId, "0qAPxT4KrKWhPeUNhJqtZS", true);
+          req.app.locals.db.vote("spotivoapplication", requestPlaylistId, "0qAPxT4KrKWhPeUNhJqtZS", true);
           req.app.locals.db.getPlaylistTracks(requestPlaylistId, req.session.userId, "name", true, function (err, data) {
             //console.log(err);
             //console.log(JSON.stringify(data, null, 4));
