@@ -48,6 +48,7 @@ $ mongorestore --db session [ProjectDirectory]/mongo/session/
 
 ## References
 ###Tutorials
+MySQL Docker Containers: http://severalnines.com/blog/mysql-docker-containers-understanding-basics
 ###Code Snippets
 #### NodeJS
 Example: https://example.com
