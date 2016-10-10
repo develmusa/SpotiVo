@@ -20,7 +20,7 @@ app.use(cookieParser());
 //session configuration
 app.use(session({
   store: new MongoStore({
-    url: 'mongodb://localhost:27017/session'
+    url: 'mongodb://mongo:27017/session'
   }),
   secret: 'likedukdtapethiskeyholdsworldstogether',
   resave: true,

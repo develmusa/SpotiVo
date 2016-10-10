@@ -20,15 +20,41 @@ docker {
 import com.bmuschko.gradle.docker.tasks.container.*
 import com.bmuschko.gradle.docker.tasks.image.*
 
+task mongoCreateDockerfile(type: Dockerfile) {
+    destFile = project.file('build/mongodb/Dockerfile')
+    from 'mongo:latest'
+}
+
+task mongoBuildImage(type: DockerBuildImage) {
+    dependsOn mongoCreateDockerfile
+    inputDir = mongoCreateDockerfile.destFile.parentFile
+    tag = 'mongo/ownimage'
+    imageId = 'mongo'
+}
+
+task mongoCreateContainer(type: DockerCreateContainer) {
+    dependsOn mongoBuildImage
+    targetImageId { mongoBuildImage.getImageId() }
+    portBindings = ['27017:27017']
+    containerName = 'mongo'
+}
+
+task mongoStartContainer(type: DockerStartContainer) {
+    dependsOn mongoCreateContainer
+    targetContainerId { mongoCreateContainer.getContainerId() }
+}
+
 task buildNodeImage(type: DockerBuildImage) {
+    dependsOn mongoStartContainer
     inputDir = file('./')
-    tag = 'test/myapp'
+    tag = 'mongo/ownbuild'
 }
 
 task createNodeContainer(type: DockerCreateContainer) {
     dependsOn buildNodeImage
     targetImageId { buildNodeImage.getImageId() }
     portBindings = ['8888:8888']
+    links =["mongo:mongo"]
 }
 
 task startNodeContainer(type: DockerStartContainer) {
@@ -37,10 +63,3 @@ task startNodeContainer(type: DockerStartContainer) {
 }
 
 
-task pull(type: DockerPullImage) {
-    repository = 'mongo:latest'
-}
-
-task show(type: DockerListImages) {
-    dependsOn pull
-}
